@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="horizontal">
+    <EditTextPreference
+        android:key="location"
+        android:summary="Please provide web page location"
+        android:title="Web page location"></EditTextPreference>
+    <com.kons.slider.TimePreference
+        android:key="startupTime"
+        android:summary="Startup time"
+        android:title="Startup time" />
+    <com.kons.slider.TimePreference
+        android:key="shutdownTime"
+        android:summary="Shutdown time"
+        android:title="Shutdown time" />
+</PreferenceScreen>
