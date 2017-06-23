@@ -53,10 +53,12 @@ public class SlideActivity extends IOIOActivity {
     private final int LEFTARROW_PIN = 35;
     private final int UPARROW_PIN = 36;
     private final int DOWNARROW_PIN = 37;
-    private long spacePressTime = 0;
     private Timer timer;
     private TimerTask timerTask;
+    private TimerTask refreshTimerTask;
     final Handler handlerWakeLock = new Handler();
+    private Date lastRefresh = new Date();
+    private Date lastUserAction = new Date();
 
 
     @Override
@@ -91,7 +93,7 @@ public class SlideActivity extends IOIOActivity {
         setContentView(R.layout.activity_slide);
 
 
-        Date startupTime = getStartupTime();
+
         /* This code together with the one in onDestroy()
          * will make the screen be always on until this Activity gets destroyed. */
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
@@ -112,13 +114,17 @@ public class SlideActivity extends IOIOActivity {
         });
         wv.getSettings().setJavaScriptEnabled(true);
         setWebViewUrl(wv);
-        //getActionBar().hide();
+        getActionBar().hide();
     }
 
 
     private void setWebViewUrl(WebView wv) {
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
         wv.loadUrl(sharedPreferences.getString(PAGE_LOCATION_SETTING_NAME, DEFAULT_PAGE));
+    }
+
+    private void setWebViewUrl() {
+        setWebViewUrl((WebView) findViewById(R.id.my_webview));
     }
 
     private Date getStartupTime() {
@@ -132,8 +138,9 @@ public class SlideActivity extends IOIOActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        setWebViewUrl();
         hideNavigation();
-        startTimer();
+        startTimers();
     }
 
     private void setFlagKeepScreenOn() {
@@ -160,6 +167,21 @@ public class SlideActivity extends IOIOActivity {
         }
     }
 
+    private void refresh() {
+        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
+        Integer refreshInterval = Integer.valueOf(sharedPreferences.getString("refreshInterval", "180"));
+        Date now = new Date();
+        if (getDifferenceInMinutes(now, lastRefresh) > refreshInterval && getDifferenceInMinutes(now, lastUserAction) > 5) {
+            WebView webView = ((WebView) findViewById(R.id.my_webview));
+            webView.loadUrl(webView.getUrl());
+            lastRefresh = now;
+        }
+    }
+
+    private long getDifferenceInMinutes(Date first, Date second) {
+        return Math.abs(first.getTime() - second.getTime()) / 1000 / 60;
+    }
+
     private boolean keepTheScreenOn() {
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
         String startupTime = sharedPreferences.getString("startupTime", "09:00");
@@ -181,24 +203,37 @@ public class SlideActivity extends IOIOActivity {
         return now.after(startupCalendar) && now.before(shutdownCalendar);
     }
 
-    public void startTimer() {
+    public void startTimers() {
         //set a new Timer
         timer = new Timer();
 
         //initialize the TimerTask's job
         initializeTimerTask();
+        initializeRefreshTimerTask();
 
         //schedule the timer, after the first 5000ms the TimerTask will run every 10000ms
         timer.schedule(timerTask, 5000, 10000); //
+        timer.schedule(refreshTimerTask, 5000, 1000);
     }
 
     public void initializeTimerTask() {
         timerTask = new TimerTask() {
             public void run() {
-                //use a handler to run a toast that shows the current timestamp
                 handlerWakeLock.post(new Runnable() {
                     public void run() {
                         setKeepTheScreenOn();
+                    }
+                });
+            }
+        };
+    }
+
+    public void initializeRefreshTimerTask() {
+        refreshTimerTask = new TimerTask() {
+            public void run() {
+                handlerWakeLock.post(new Runnable() {
+                    public void run() {
+                        refresh();
                     }
                 });
             }
@@ -295,6 +330,7 @@ public class SlideActivity extends IOIOActivity {
     private void move(View view, int direction) {
         BaseInputConnection baseInputConnection = new BaseInputConnection(view, true);
         baseInputConnection.sendKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, direction));
+        lastUserAction = new Date();
     }
 
 

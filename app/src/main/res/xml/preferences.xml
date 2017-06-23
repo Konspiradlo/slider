@@ -13,4 +13,9 @@
         android:key="shutdownTime"
         android:summary="Shutdown time"
         android:title="Shutdown time" />
+    <EditTextPreference
+        android:defaultValue="180"
+        android:inputType="number"
+        android:key="refreshInterval"
+        android:title="Refresh interval" />
 </PreferenceScreen>
